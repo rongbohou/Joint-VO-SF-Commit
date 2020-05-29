@@ -983,7 +983,7 @@ void VO_SF::run_VO_SF(bool create_image_pyr)
     //Kmeans
 	kMeans3DCoord();
 
-	//Create the pyramid for the labels
+	//Create the pyramid for the labels, 计算每一层的label
 	createLabelsPyramidUsingKMeans();
 
 	//Compute warped b_segmentation (necessary for the robust estimation)

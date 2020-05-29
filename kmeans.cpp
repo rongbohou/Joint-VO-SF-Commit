@@ -92,6 +92,7 @@ void VO_SF::initializeKMeans()
 
 
 	//Compute the first KMeans values (using median to avoid getting a floating point between two regions)
+	//? @by hourongbo
 	const float inv_f_i = 2.f*tan(0.5f*fovh)/float(cols_i);
     const float disp_u_i = 0.5f*(cols_i-1);
     const float disp_v_i = 0.5f*(rows_i-1);
@@ -129,7 +130,7 @@ void VO_SF::kMeans3DCoord()
 	const MatrixXf &yy_ref = yy_old[lower_level];
 	MatrixXi &labels_lowres = labels[lower_level];
 
-	//Initialization
+	//Initialization, 设置初始的kmeans
 	initializeKMeans();
 
 
@@ -262,10 +263,10 @@ void VO_SF::kMeans3DCoord()
 				count[best_label]++;
             }
 
-    //Compute connectivity
+    //Compute connectivity, 计算K个区域的连接关系
     computeRegionConnectivity();
 
-    //Smooth regions
+    //Smooth regions, 计算continuous label
 	rows_i = rows; cols_i = cols;
     smoothRegions(max_level);
 
