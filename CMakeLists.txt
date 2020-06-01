@@ -32,7 +32,8 @@ ADD_LIBRARY(vo_sf_lib
 	datasets.cpp
 	datasets.h
 	normal_equation.cpp
-	opencv_ext.cpp)
+	opencv_ext.cpp
+	timer.cpp)
 	
 TARGET_LINK_LIBRARIES(vo_sf_lib
 	${MRPT_LIBS}

@@ -33,7 +33,7 @@
 
 class Datasets {
 public:
-
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Datasets(unsigned int res_factor);
 
 	unsigned int rawlog_count;

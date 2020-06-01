@@ -23,11 +23,14 @@
 
 #include <joint_vo_sf.h>
 #include <structs_parallelization.h>
+#include "timer.h"
 
 using namespace mrpt;
 using namespace mrpt::utils;
 using namespace std;
 using namespace Eigen;
+
+#define COUNT_TIME
 
 //A strange size for "ws..." due to the fact that some pixels are used twice for odometry and scene flow (hence the 3/2 safety factor)
 VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*640*480/(2*res_factor*res_factor)), ws_background(3*640*480/(2*res_factor*res_factor))  
@@ -510,7 +513,7 @@ void VO_SF::computeWeights()
 	//Parameters for error_linearization
     const float kduvt_c = 10.f;
 	const float kduvt_d = 200.f;
-	
+	//不适用边界点
     for (unsigned int u = 1; u < cols_i-1; u++)
 		for (unsigned int v = 1; v < rows_i-1; v++)
             if (Null(v,u) == false)
@@ -529,7 +532,7 @@ void VO_SF::computeWeights()
                 weights_c(v,u) = sqrtf(w_dinobj/(error_m_c + error_l_c));
 				weights_d(v,u) = sqrtf(w_dinobj/(error_m_d + error_l_d)); 
 			}
-
+    //使得最大权重为1
     const float inv_max_c = 1.f/weights_c.maximum();
     weights_c = inv_max_c*weights_c;
 
@@ -679,7 +682,7 @@ void VO_SF::solveMotionDynamicClusters()
 	//Refs
     vector<pair<int,int> > &indices = ws_foreground.indices;
 	const Matrix<float, NUM_LABELS+1, Dynamic> &labels_ref = label_funct[image_level];
-
+    // 单独计算每个dynamic clusters' motino, between prev and current
     for (unsigned int l=0; l<NUM_LABELS; l++)
     {
         if (!label_dynamic[l])
@@ -711,7 +714,8 @@ void VO_SF::solveMotionStaticClusters()
     vector<pair<int,int> > &indices = ws_background.indices;
     indices.clear();
 
-	//Create the indices for the elements in the background
+	// Create the indices for the elements in the background
+	// 使用所有的static clusters
     for (unsigned int l=0; l<NUM_LABELS; l++)
     {
         if (!label_static[l])
@@ -974,12 +978,23 @@ void VO_SF::warpImagesAccurate()
 
 void VO_SF::run_VO_SF(bool create_image_pyr)
 {
+#ifdef COUNT_TIME
+    static Timer timer_vio;
+    timer_vio.start("1.run_VO_SF Total");
+    timer_vio.start("2.createImagePyramid");
+#endif
+
 	CTicTac clock; clock.Tic();
-	
+
 	//Create the image pyramid if it has not been computed yet
     //----------------------------------------------------------------------------------
 	if (create_image_pyr) 
 		createImagePyramid();
+
+#ifdef COUNT_TIME
+    timer_vio.stopAndCount("2.createImagePyramid");
+    timer_vio.start("3.kMeans");
+#endif
 
     //Create labels
     //----------------------------------------------------------------------------------
@@ -992,6 +1007,10 @@ void VO_SF::run_VO_SF(bool create_image_pyr)
 	//Compute warped b_segmentation (necessary for the robust estimation)
 	computeSegTemporalRegValues();
 
+#ifdef COUNT_TIME
+    timer_vio.stopAndCount("3.kMeans");
+    timer_vio.start("4.robust odometry");
+#endif
 
     //Solve a robust odometry problem to segment the background (coarse-to-fine)
     //---------------------------------------------------------------------------------
@@ -1038,10 +1057,19 @@ void VO_SF::run_VO_SF(bool create_image_pyr)
 				break;
 		}
 
+#ifdef COUNT_TIME
+    timer_vio.stopAndCount("4.robust odometry");
+    timer_vio.start("5.segment Static Dynamic");
+#endif
+
 	//Segment static and dynamic parts
     //线性求解得 static/dynamic probability, AtA*x=b
 	segmentStaticDynamic();
 
+#ifdef COUNT_TIME
+    timer_vio.stopAndCount("5.segment Static Dynamic");
+    timer_vio.start("6.multi-odometry");
+#endif
 
 	//Solve the multi-odometry problem (coarse-to-fine)
 	//-------------------------------------------------------------------------------------
@@ -1084,6 +1112,10 @@ void VO_SF::run_VO_SF(bool create_image_pyr)
 		solveMotionAllClusters();
     }
 
+#ifdef COUNT_TIME
+    timer_vio.stopAndCount("6.multi-odometry");
+#endif
+
 	//Update camera pose from the "static" motion estimate
 	updateCameraPoseFromOdometry();
 
@@ -1094,11 +1126,15 @@ void VO_SF::run_VO_SF(bool create_image_pyr)
     //Compute the scene flow from the rigid motions and the labels
 	computeSceneFlowFromRigidMotions();
 
+#ifdef COUNT_TIME
+    timer_vio.stopAndCount("1.run_VO_SF Total");
+    timer_vio.print();
+#endif
 	//Show runtime
 	const float runtime = 1000.f*clock.Tac();
 	printf("\n Runtime = %f (ms) ", runtime);
-	if (create_image_pyr)	printf("including the image pyramid");
-	else					printf("without including the image pyramid");
+	if (create_image_pyr)	printf("including the image pyramid \n");
+	else					printf("without including the image pyramid \n");
 }
 
 void VO_SF::computeSceneFlowFromRigidMotions()

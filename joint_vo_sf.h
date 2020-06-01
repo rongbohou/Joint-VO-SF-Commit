@@ -65,7 +65,7 @@ struct SolveForMotionWorkspace
 
 class VO_SF {
 public:
-
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 	//						General
 	//----------------------------------------------------------------
     std::vector<Eigen::MatrixXf> intensity, intensity_old, intensity_inter, intensity_warped;	//Intensity images
