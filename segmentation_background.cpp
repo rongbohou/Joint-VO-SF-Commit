@@ -53,6 +53,7 @@ void VO_SF::segmentStaticDynamic()
 
 
 	//First, compute a mask of edges (to downweight their residuals, they are always high no matter what segment they belong)
+	//找到深度变化较大的点，不用这些点
 	Matrix<bool, Dynamic, Dynamic> edge_mask(rows,cols); edge_mask.fill(0.f);
 	const float threshold_edge = 0.3f;
 
@@ -67,7 +68,7 @@ void VO_SF::segmentStaticDynamic()
 				edge_mask(v,u) = (sum_dif_depth < threshold_edge);
 			}
 		}
-
+	//对应(7),(8)
 	//Compute residuals
 	for (unsigned int u=0; u<cols; u++)
 		for (unsigned int v=0; v<rows; v++)
@@ -118,7 +119,7 @@ void VO_SF::optimizeSegmentation(Matrix<float, NUM_LABELS, 1> &r)
 		if (size_kmeans[l] != 0)
 			res_sorted.push_back(r(l));
 	std::sort(res_sorted.begin(), res_sorted.end());
-
+	//式子(21). (22)
 	const float median_res = res_sorted.at(res_sorted.size()/2);
 	const float trunc_res = max(0.007f, min(0.015f*(1.f + 10.f*twist_odometry.norm()), median_res));
 	const float lim_nobackg = (1.f + 10.f*twist_odometry.norm())*trunc_res;
@@ -147,6 +148,7 @@ void VO_SF::optimizeSegmentation(Matrix<float, NUM_LABELS, 1> &r)
 		}
 
 	//Define/set parameters of the optimization problem
+	//式子(13),(14),(15)中的权重lambda
 	const float lambda_reg = 0.5f; 
 	const float lambda_temp = use_b_temp_reg ? 1.5f : 0.f;
 	const float lambda_depth = 0.15f;
@@ -160,8 +162,11 @@ void VO_SF::optimizeSegmentation(Matrix<float, NUM_LABELS, 1> &r)
 	for (unsigned int l=0; l<NUM_LABELS; l++)
 	{
 		const float transition_error = 0.5f*(lim_nobackg + lim_backg);
+		//式(10), 和paper有小差异
 		background_ref(l) = max(0.f, min(2.f, (r[l] - lim_nobackg)/(lim_backg-lim_nobackg)));
+		//式(12), 和paper有小差异
 		const float w_dataterm = (1.f + 1.5f*r[l]>transition_error)*sqrtf(square((r[l] - transition_error)/w_min) + 1.f);
+		//式(15)
 		const float depth_term = lambda_depth*max(0.f, exp(kmeans(0,l))-exp(depth_threshold_backg));
 
 		A(l,l) = w_dataterm + depth_term + lambda_temp;
@@ -185,6 +190,7 @@ void VO_SF::optimizeSegmentation(Matrix<float, NUM_LABELS, 1> &r)
     AtB.multiply_AtB(A,B);
 
 	//Solve
+	//线性求解得到static/dynamic probability
 	b_segm = AtA.ldlt().solve(AtB);	
 
 	//Classify clusters as static, uncertain or moving

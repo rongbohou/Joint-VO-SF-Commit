@@ -104,7 +104,7 @@ struct IrlsContext
 		{
 			const JacobianT::MapType J(A + i*JacobianElements); 
 			const ResidualT::MapType r(B + i*ResidualElements);
-			residuals.block<2,1>(2*i,0) = J*Var - r;
+			residuals.block<2,1>(2*i,0) = J*Var - r;//类似于FEJ, 更新err
 			sum_residuals += std::abs(residuals(2*i)) + std::abs(residuals(2*i+1));
 		}
 
@@ -236,6 +236,7 @@ struct JacobianElementForRobustOdometryFn
 
     float operator()(const Range& range, const float &initial_mean_residual) const
     {
+        //这个是fx @hourongbo
         const float f_inv = float(self.cols_i)/(2.f*tan(0.5f*self.fovh));
 
         float result = initial_mean_residual;
@@ -269,12 +270,14 @@ struct JacobianElementForRobustOdometryFn
             const float twc = w_dinobj*d*self.k_photometric_res;
 
             //Fill the matrix A
+            //drI/dpose
             J(0,0) = twc*(dycomp_c*x*inv_d + dzcomp_c*y*inv_d);
             J(0,1) = twc*(-dycomp_c);
             J(0,2) = twc*(-dzcomp_c);
             J(0,3) = twc*(dycomp_c*y - dzcomp_c*x);
             J(0,4) = twc*(dycomp_c*inv_d*y*x + dzcomp_c*(y*y*inv_d + d));
             J(0,5) = twc*(-dycomp_c*(x*x*inv_d + d) - dzcomp_c*inv_d*y*x);
+            //rI
             r(0) = twc*(-self.dct(v,u));
 
             //                                          Geometry
@@ -284,12 +287,14 @@ struct JacobianElementForRobustOdometryFn
             const float twd = w_dinobj * d;
 
             //Fill the matrix A
+            //drZ/dpose = drZ_a/dpose + drZ_b/dpose
             J(1,0) = twd*(1.f + dycomp_d*x*inv_d + dzcomp_d*y*inv_d);
             J(1,1) = twd*(-dycomp_d);
             J(1,2) = twd*(-dzcomp_d);
             J(1,3) = twd*(dycomp_d*y - dzcomp_d*x);
             J(1,4) = twd*(y + dycomp_d*inv_d*y*x + dzcomp_d*(y*y*inv_d + d));
             J(1,5) = twd*(-x - dycomp_d*(x*x*inv_d + d) - dzcomp_d*inv_d*y*x);
+            //rZ
             r(1) = twd*(-self.ddt(v,u));
 
             result += r.cwiseAbs().sum();

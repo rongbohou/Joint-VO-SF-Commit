@@ -497,8 +497,8 @@ void VO_SF::calculateDerivatives()
     ddv.row(rows_i-1) = ddv.row(rows_i-2);
 
 	//Temporal derivative
-	dct = intensity_warped[image_level] - intensity_old[image_level];
-    ddt = depth_warped[image_level] - depth_old[image_level];
+	dct = intensity_warped[image_level] - intensity_old[image_level]; //式子（2）
+    ddt = depth_warped[image_level] - depth_old[image_level];// 式子（1）
 }
 
 void VO_SF::computeWeights()
@@ -559,6 +559,7 @@ void VO_SF::solveRobustOdometryCauchy()
 
 
     //Solve IRLS (Cauchy robust penalty)
+    // 迭代计算 delta odometry, dx = (J_t*J).inv * (-J_t * e)
 	//===================================================================
 	float chi2_last = numeric_limits<float>::max(), chi2;
 	Vector6f robust_odo = Vector6f::Zero();
@@ -598,6 +599,7 @@ void VO_SF::solveRobustOdometryCauchy()
     }
 
 	//Compute the rigid transformation associated to the solution
+	//更新 odometry
 	computeTransformationFromTwist(robust_odo, true);
 }
 
@@ -737,6 +739,7 @@ void VO_SF::updateCameraPoseFromOdometry()
 	cam_oldpose = cam_pose;
 	math::CMatrixDouble44 aux_acu = T_odometry;
 	poses::CPose3D pose_aux(aux_acu);
+	//cam_pose * T_odometry: Twb_prev * Tprev_cur
 	cam_pose = cam_pose + pose_aux;
 }
 
@@ -993,6 +996,7 @@ void VO_SF::run_VO_SF(bool create_image_pyr)
     //Solve a robust odometry problem to segment the background (coarse-to-fine)
     //---------------------------------------------------------------------------------
     //Initialize the overall transformations to 0
+    //T_odometry, T_prev_cur
 	T_odometry.setIdentity();
     for (unsigned int l=0; l<NUM_LABELS; l++)
         T_clusters[l].setIdentity();
@@ -1014,13 +1018,16 @@ void VO_SF::run_VO_SF(bool create_image_pyr)
 				xx_warped[image_level] = xx[image_level];
 				yy_warped[image_level] = yy[image_level];
 			}
-			else 
-                warpImagesAccurate(); // forward warping, more precise
+			else{
+                // forward warping, more precise, 对应paper(1),(2),(3)
+                warpImagesAccurate();
+			}
+
 
 			//2. Compute inter coords (better linearization of the range and optical flow constraints)
 			computeCoordsParallel();
 
-			//3. Compute derivatives
+			//3. Compute derivatives, 像素/深度梯度, 用与weight, Jac, err的计算; rI, rz
 			calculateDerivatives();
 
 			//4. Solve odometry
@@ -1032,6 +1039,7 @@ void VO_SF::run_VO_SF(bool create_image_pyr)
 		}
 
 	//Segment static and dynamic parts
+    //线性求解得 static/dynamic probability, AtA*x=b
 	segmentStaticDynamic();
 
 

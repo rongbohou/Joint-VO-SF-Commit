@@ -39,7 +39,7 @@
 
 typedef Eigen::Matrix<float, 6, 1> Vector6f;
 typedef Eigen::Matrix<float, 2, 6> JacobianT;
-typedef Eigen::Matrix<float, 2, 1> ResidualT;
+typedef Eigen::Matrix<float, 2, 1> ResidualT;//(rz, rI)
 
 static const int JacobianElements = JacobianT::RowsAtCompileTime * JacobianT::ColsAtCompileTime;
 static const int ResidualElements = ResidualT::RowsAtCompileTime * ResidualT::ColsAtCompileTime;
