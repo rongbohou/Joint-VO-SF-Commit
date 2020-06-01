@@ -110,6 +110,7 @@ int main()
 		if (anything_new)
 		{
 			bool aux = false;
+			//用于可视化
 			cf.updateSceneDatasets(dataset.gt_pose, dataset.gt_oldpose);
 			anything_new = 0;
 		}

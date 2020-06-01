@@ -1120,10 +1120,14 @@ void VO_SF::run_VO_SF(bool create_image_pyr)
 	updateCameraPoseFromOdometry();
 
 	//Refine static/dynamic segmentation and warp it to use it in the next iteration
+    //线性求解得 static/dynamic probability, AtA*x=b
 	segmentStaticDynamic();
+
+	//
 	warpStaticDynamicSegmentation();
 
     //Compute the scene flow from the rigid motions and the labels
+    //计算每个point scene flow:  T_cur_prev *p_prev - p_prev
 	computeSceneFlowFromRigidMotions();
 
 #ifdef COUNT_TIME
