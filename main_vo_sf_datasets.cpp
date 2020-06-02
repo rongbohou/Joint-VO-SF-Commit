@@ -43,7 +43,6 @@ int main()
 	VO_SF cf(res_factor);
 	Datasets dataset(res_factor);
 
-
 	//Set dir of the Rawlog file
 //	dataset.filename = ".../rawlog_rgbd_dataset_freiburg1_desk/rgbd_dataset_freiburg1_desk.rawlog";
 	dataset.filename = "/home/hrb/dataset/rawlog_rgbd_dataset_freiburg3_walking_xyz/rgbd_dataset_freiburg3_walking_xyz.rawlog";

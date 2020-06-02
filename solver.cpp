@@ -24,6 +24,8 @@
 #include <joint_vo_sf.h>
 #include <structs_parallelization.h>
 #include "timer.h"
+#include<iostream>
+#include<fstream>
 
 using namespace mrpt;
 using namespace mrpt::utils;
@@ -183,6 +185,34 @@ void VO_SF::loadImagePairFromFiles(string files_dir, unsigned int res_factor)
 	createImagePyramid();
 }
 
+//todo:
+bool loadDepthFromTxt(const int& height, const int& width, const string& name, Eigen::MatrixXf& depth_wf){
+
+    ifstream fFile;
+    fFile.open(name.c_str());
+    if (!fFile.is_open()) {
+        std::cout << "open file err!\n";
+        exit(-1);
+    }
+    int v = 0; // 行
+    while(!fFile.eof())
+    {
+        string s;
+        getline(fFile,s);
+        if(!s.empty())
+        {
+            stringstream ss;
+            ss << s;
+            for(int u=0; u<width; ++u){ //列
+                double t;
+                ss >> t;
+                depth_wf(height-1-v,u) = t;
+            }
+            v++;
+        }
+    }
+}
+
 bool VO_SF::loadImageFromSequence(string files_dir, unsigned int index, unsigned int res_factor)
 {
     const float norm_factor = 1.f/255.f;
@@ -201,9 +231,9 @@ bool VO_SF::loadImageFromSequence(string files_dir, unsigned int index, unsigned
 		return true;
 	}
 		
-
-    for (unsigned int v=0; v<height; v++)
-        for (unsigned int u=0; u<width; u++)
+    //关于x翻转
+    for (unsigned int v=0; v<height; v++)//行
+        for (unsigned int u=0; u<width; u++)//列
 		{
 			cv::Vec3b color_here = color.at<cv::Vec3b>(res_factor*v,res_factor*u);
 			im_r(height-1-v,u) = norm_factor*color_here[2];
@@ -218,7 +248,7 @@ bool VO_SF::loadImageFromSequence(string files_dir, unsigned int index, unsigned
     cv::Mat depth = cv::imread(name, -1);
     cv::Mat depth_float;
     depth.convertTo(depth_float, CV_32FC1, 1.0 / 5000.0);
-
+    //cv::Mat.at<type>(i,j), 取i行j列的值
     for (unsigned int v=0; v<height; v++)
         for (unsigned int u=0; u<width; u++)
             depth_wf(height-1-v,u) = depth_float.at<float>(res_factor*v,res_factor*u);
@@ -276,12 +306,13 @@ void VO_SF::createImagePyramid()
 	//Threshold to use (or not) neighbours in the filter
 	const float max_depth_dif = 0.1f;
 
-    //Push the frames back
+    //Push the frames back, 将上次结果保存到*_old
     intensity_old.swap(intensity);
     depth_old.swap(depth);
     xx_old.swap(xx);
     yy_old.swap(yy);
 
+    //处理当前frame, depth_wf, intensity_wf为当前的观测
     //The number of levels of the pyramid does not match the number of levels used
     //in the odometry computation (because we sometimes want to finish with lower resolutions)
     unsigned int pyr_levels = round(log2(width/cols)) + ctf_levels;
@@ -801,6 +832,8 @@ void VO_SF::warpImages()
 
 void VO_SF::warpImages(cv::Rect region)
 {
+    //phd thesis: Motion Estimation, 3D Reconstruction and Navigation with Range Sensors
+    //3.15; 3.16
     const unsigned int x = region.tl().x, y = region.tl().y, w = region.width, h = region.height;
 
     //Camera parameters (which also depend on the level resolution)
@@ -864,6 +897,9 @@ void VO_SF::warpImages(cv::Rect region)
 
 void VO_SF::warpImagesAccurate()
 {
+    //phd thesis: Motion Estimation, 3D Reconstruction and Navigation with Range Sensors
+    //3.13; 3.14
+
 	//Camera parameters (which also depend on the level resolution)
 	const float f = float(cols_i)/(2.f*tan(0.5f*fovh));
 	const float disp_u_i = 0.5f*float(cols_i-1);
@@ -1044,6 +1080,7 @@ void VO_SF::run_VO_SF(bool create_image_pyr)
 
 
 			//2. Compute inter coords (better linearization of the range and optical flow constraints)
+			//计算depht_inter等*_inter数据, *_inter(v,u) = 0.5f*(*_old(v,u) + *_warped(v,u));用于3中
 			computeCoordsParallel();
 
 			//3. Compute derivatives, 像素/深度梯度, 用与weight, Jac, err的计算; rI, rz
@@ -1096,8 +1133,11 @@ void VO_SF::run_VO_SF(bool create_image_pyr)
 			xx_warped[image_level] = xx[image_level];
 			yy_warped[image_level] = yy[image_level];
 		}
-		else
-			warpImagesParallel();
+		else{
+		    // warp 方法和robust odometry 有所差异,参考phd thesis
+            warpImagesParallel();
+		}
+
 
 		//2. Compute inter coords
 		computeCoordsParallel();
