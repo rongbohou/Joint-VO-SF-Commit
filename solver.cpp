@@ -33,9 +33,10 @@ using namespace std;
 using namespace Eigen;
 
 #define COUNT_TIME
+// need to set the resolutions, width: 752; height: 480
 
 //A strange size for "ws..." due to the fact that some pixels are used twice for odometry and scene flow (hence the 3/2 safety factor)
-VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*640*480/(2*res_factor*res_factor)), ws_background(3*640*480/(2*res_factor*res_factor))  
+VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*640*480/(2*res_factor*res_factor)), ws_background(3*640*480/(2*res_factor*res_factor))
 {
     //Resolutions and levels
 	rows = 240;
@@ -44,6 +45,19 @@ VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*640*480/(2*res_factor*re
     fovv = M_PI*48.5/180.0;
     width = 640/res_factor;
     height = 480/res_factor;
+
+//VO_SF::VO_SF(unsigned int res_factor) : ws_foreground(3*752*480/(2*res_factor*res_factor)), ws_background(3*752*480/(2*res_factor*res_factor))
+//{
+//        double fovh_t = float(640) / float(458) / 2;
+//        fovh_t = std::atan(fovh_t)*2.0;
+//        fovh = fovh_t; //fx 458
+//        fovv = fovh_t;
+//        //Resolutions and levels
+//        rows = 480;
+//        cols = 752;
+//        width = 752/res_factor;
+//        height = 480/res_factor;
+
 	ctf_levels = log2(cols/40) + 2;
 
 	//Solver
@@ -185,7 +199,6 @@ void VO_SF::loadImagePairFromFiles(string files_dir, unsigned int res_factor)
 	createImagePyramid();
 }
 
-//todo:
 bool loadDepthFromTxt(const int& height, const int& width, const string& name, Eigen::MatrixXf& depth_wf){
 
     ifstream fFile;
@@ -211,7 +224,80 @@ bool loadDepthFromTxt(const int& height, const int& width, const string& name, E
             v++;
         }
     }
+    std::cout <<"height = "<< height << " actual height = "<< v << std::endl;
 }
+
+// true: stop
+bool VO_SF::loadImageFromSequenceOurs(string files_dir, unsigned int index, unsigned int res_factor)
+{
+
+    //get frame name
+    static std::vector<string> vrgbFiles, vdepthFiles;
+    static bool load_file_done = false;
+
+    if(!load_file_done){
+        load_file_done = true;
+        string match_file = files_dir + "rgbd.match";
+        ifstream fFile;
+        fFile.open(match_file.c_str());
+        if (!fFile.is_open()) {
+            std::cout << "open file err: " << match_file << std::endl;
+            exit(-1);
+        }
+        vrgbFiles.reserve(2000);
+        vdepthFiles.reserve(2000);
+
+        while(!fFile.eof())
+        {
+            string s;
+            getline(fFile,s);
+            if(!s.empty())
+            {
+                stringstream ss;
+                ss << s;
+
+                double t;
+                string sRGB, sD;
+                ss >> t;
+                ss >> sRGB;
+                vrgbFiles.push_back(sRGB);
+                ss >> t;
+                ss >> sD;
+                vdepthFiles.push_back(sD);
+            }
+        }
+    }
+
+    //check at the end of the dataset
+    if(index >= vrgbFiles.size()){
+        return true;
+    }
+
+    //                              Load the first frame
+    //==============================================================================
+    //get rgb image
+    string name = files_dir + vrgbFiles[index];
+    cv::Mat intensity = cv::imread(name.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
+
+    if (intensity.data == NULL)
+    {
+        printf("\n End of sequence (or color image not found...)");
+        return true;
+    }
+
+    //关于x翻转
+    const float norm_factor = 1.f; //1.f/255.f;
+    for (unsigned int v=0; v<height; v++)//行
+        for (unsigned int u=0; u<width; u++)//列
+            intensity_wf(height-1-v,u) = norm_factor*intensity.at<unsigned char>(res_factor*v+1,res_factor*u);
+
+    //get depth image
+    name = files_dir + vdepthFiles[index];
+    loadDepthFromTxt(height, width, name, depth_wf);
+
+    return false;
+}
+
 
 bool VO_SF::loadImageFromSequence(string files_dir, unsigned int index, unsigned int res_factor)
 {

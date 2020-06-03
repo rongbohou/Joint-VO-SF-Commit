@@ -187,6 +187,7 @@ public:
 	//--------------------------------------------------------------
 	void loadImagePairFromFiles(std::string files_dir, unsigned int res_factor);
 	bool loadImageFromSequence(std::string files_dir, unsigned int index, unsigned int res_factor);
+    bool loadImageFromSequenceOurs(std::string files_dir, unsigned int index, unsigned int res_factor);
 	void saveFlowAndSegmToFile(std::string files_dir);	
 
 };

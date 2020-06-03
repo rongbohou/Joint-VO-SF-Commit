@@ -33,67 +33,132 @@
 // 'e' - Finish/exit
 // -------------------------------------------------------------------------------
 
+//int main()
+//{
+//    const unsigned int res_factor = 2;
+//	VO_SF cf(res_factor);
+//
+//
+//	//Set first image to load, decimation factor and the sequence dir
+//	unsigned int im_count = 1;
+//	const unsigned int decimation = 1; //5
+//	std::string dir = ".../data/sequence people moving/";
+//
+//	//Load image and create pyramid
+//	cf.loadImageFromSequence(dir, im_count, res_factor);
+//	cf.createImagePyramid();
+//
+//	//Create the 3D Scene
+//	cf.initializeSceneImageSeq();
+//
+//	//Auxiliary variables
+//	int pushed_key = 0;
+//	bool continuous_exec = false, stop = false;
+//
+//	while (!stop)
+//	{
+//        if (cf.window.keyHit())
+//            pushed_key = cf.window.getPushedKey();
+//        else
+//            pushed_key = 0;
+//
+//		switch (pushed_key) {
+//
+//        //Load new image and solve
+//        case 'n':
+//			im_count += decimation;
+//			stop = cf.loadImageFromSequence(dir, im_count, res_factor);
+//            cf.run_VO_SF(true);
+//            cf.createImagesOfSegmentations();
+//            cf.updateSceneImageSeq();
+//            break;
+//
+//		//Start/Stop continuous estimation
+//		case 's':
+//			continuous_exec = !continuous_exec;
+//			break;
+//
+//		//Close the program
+//		case 'e':
+//			stop = true;
+//			break;
+//		}
+//
+//		if ((continuous_exec)&&(!stop))
+//		{
+//			im_count += decimation;
+//			stop = cf.loadImageFromSequence(dir, im_count, res_factor);
+//            cf.run_VO_SF(true);
+//            cf.createImagesOfSegmentations();
+//			cf.updateSceneImageSeq();
+//		}
+//	}
+//
+//	return 0;
+//}
+
+
 int main()
-{	
-    const unsigned int res_factor = 2;
-	VO_SF cf(res_factor);
+{
+    // need to set the resolutions, width: 752; height: 480
+    const unsigned int res_factor = 1;
+    VO_SF cf(res_factor);
 
+    //Set first image to load, decimation factor and the sequence dir
+    unsigned int im_count = 1;
+    const unsigned int decimation = 1; //5
+    std::string dir = "/home/hrb/dataset/euroc_data_rgbd1/";
 
-	//Set first image to load, decimation factor and the sequence dir
-	unsigned int im_count = 1;
-	const unsigned int decimation = 1; //5
-	std::string dir = ".../data/sequence people moving/"; 
+    //Load image and create pyramid
+    cf.loadImageFromSequenceOurs(dir, im_count, res_factor);
+    cf.createImagePyramid();
 
-	//Load image and create pyramid
-	cf.loadImageFromSequence(dir, im_count, res_factor);
-	cf.createImagePyramid();
+    //Create the 3D Scene
+    cf.initializeSceneImageSeq();
 
-	//Create the 3D Scene
-	cf.initializeSceneImageSeq();
+    //Auxiliary variables
+    int pushed_key = 0;
+    bool continuous_exec = false, stop = false;
 
-	//Auxiliary variables
-	int pushed_key = 0;
-	bool continuous_exec = false, stop = false;
-	
-	while (!stop)
-	{	
+    while (!stop)
+    {
         if (cf.window.keyHit())
             pushed_key = cf.window.getPushedKey();
         else
             pushed_key = 0;
 
-		switch (pushed_key) {
+        switch (pushed_key) {
 
-        //Load new image and solve
-        case 'n':
-			im_count += decimation;
-			stop = cf.loadImageFromSequence(dir, im_count, res_factor);
+            //Load new image and solve
+            case 'n':
+                im_count += decimation;
+                stop = cf.loadImageFromSequenceOurs(dir, im_count, res_factor);
+                cf.run_VO_SF(true);
+                cf.createImagesOfSegmentations();
+                cf.updateSceneImageSeq();
+                break;
+
+                //Start/Stop continuous estimation
+            case 's':
+                continuous_exec = !continuous_exec;
+                break;
+
+                //Close the program
+            case 'e':
+                stop = true;
+                break;
+        }
+
+        if ((continuous_exec)&&(!stop))
+        {
+            im_count += decimation;
+            stop = cf.loadImageFromSequenceOurs(dir, im_count, res_factor);
             cf.run_VO_SF(true);
             cf.createImagesOfSegmentations();
             cf.updateSceneImageSeq();
-            break;
+        }
+    }
 
-		//Start/Stop continuous estimation
-		case 's':
-			continuous_exec = !continuous_exec;
-			break;
-			
-		//Close the program
-		case 'e':
-			stop = true;
-			break;
-		}
-	
-		if ((continuous_exec)&&(!stop))
-		{
-			im_count += decimation;
-			stop = cf.loadImageFromSequence(dir, im_count, res_factor);
-            cf.run_VO_SF(true);
-            cf.createImagesOfSegmentations();
-			cf.updateSceneImageSeq();
-		}
-	}
-
-	return 0;
+    return 0;
 }
 
